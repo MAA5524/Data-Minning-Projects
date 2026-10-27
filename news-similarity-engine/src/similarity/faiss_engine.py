@@ -34,8 +34,11 @@ class FaissSimilarityEngine:
             )
         self.model_name = model_name
         self.model = SentenceTransformer(model_name)
-        # Dimension D of the embedding space
-        self.dimension: int = self.model.get_sentence_embedding_dimension()
+        # Dimension D of the embedding space (supporting modern and legacy sentence-transformers)
+        if hasattr(self.model, "get_embedding_dimension"):
+            self.dimension: int = self.model.get_embedding_dimension()
+        else:
+            self.dimension: int = self.model.get_sentence_embedding_dimension()
 
     @staticmethod
     def map_cosine_to_percentage(cosine_val: float) -> float:

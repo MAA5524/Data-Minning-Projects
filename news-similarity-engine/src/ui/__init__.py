@@ -3,6 +3,7 @@
 from src.ui.styles import get_custom_css
 from src.ui.components import (
     render_header,
+    render_scraped_posts_columns,
     render_similarity_cards,
     render_side_by_side_comparison,
     render_nlp_pipeline_stages,
@@ -13,6 +14,7 @@ from src.ui.components import (
 __all__ = [
     "get_custom_css",
     "render_header",
+    "render_scraped_posts_columns",
     "render_similarity_cards",
     "render_side_by_side_comparison",
     "render_nlp_pipeline_stages",

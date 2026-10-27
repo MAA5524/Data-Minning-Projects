@@ -12,6 +12,8 @@ class BaleScraper(BaseScraper):
 
     # Candidate CSS selectors commonly used across Bale web preview versions
     PRIMARY_SELECTORS = [
+        "div[class*='MessageItem_messageWrapper']",
+        "div[class*='Text_text']",
         "div[class*='message-text']",
         "div[class*='message_text']",
         "div[class*='bubble-text']",
@@ -41,9 +43,19 @@ class BaleScraper(BaseScraper):
         if not clean_channel:
             raise ScraperError("Bale channel ID cannot be empty.")
 
-        url = f"{config.BALE_BASE_URL}/{clean_channel}"
-        html_content = await self.get_html(url)
+        # Modern Bale channel preview route is at /s/{channel}
+        preview_url = f"{config.BALE_BASE_URL}/s/{clean_channel}"
+        try:
+            html_content = await self.get_html(preview_url)
+            posts = self.parse_posts(html_content, limit=limit)
+            if posts:
+                return posts
+        except Exception:
+            pass
 
+        # Fallback to direct channel route /{channel}
+        fallback_url = f"{config.BALE_BASE_URL}/{clean_channel}"
+        html_content = await self.get_html(fallback_url)
         return self.parse_posts(html_content, limit=limit)
 
     def parse_posts(self, html_content: str, limit: int = 10) -> List[str]:
@@ -62,49 +74,68 @@ class BaleScraper(BaseScraper):
         for unwanted in soup.find_all(["script", "style", "nav", "header", "footer", "button"]):
             unwanted.decompose()
 
-        # Step 1: Attempt extraction with primary class selectors
+        # Step 1: Check for message wrapper containers first
+        wrapper_nodes = soup.select("div[class*='MessageItem_messageWrapper']")
+        posts: List[str] = []
+        seen_texts: Set[str] = set()
+
+        # Ignore boilerplate strings that might appear in channel previews
+        IGNORED_PATTERNS = ["مشاهده در وب بله", "دانلود «بله»", "پیش‌نمایش کانال"]
+
+        if wrapper_nodes:
+            # Process in chronological order or reverse to get newest
+            for wrapper in reversed(wrapper_nodes):
+                text_el = wrapper.select_one("div[class*='Text_text']")
+                target_node = text_el if text_el else wrapper
+
+                for br in target_node.find_all("br"):
+                    br.replace_with(" ")
+
+                text = target_node.get_text(separator=" ", strip=True)
+                if any(ign in text for ign in IGNORED_PATTERNS):
+                    continue
+
+                if len(text) >= config.MIN_POST_LENGTH and text not in seen_texts:
+                    seen_texts.add(text)
+                    posts.append(text)
+                    if len(posts) >= limit:
+                        return posts
+
+        # Step 2: Attempt extraction with other primary class selectors
         candidate_nodes: List[Tag] = []
         for selector in self.PRIMARY_SELECTORS:
             nodes = soup.select(selector)
             if nodes:
                 candidate_nodes.extend(nodes)
 
-        posts: List[str] = []
-        seen_texts: Set[str] = set()
-
         if candidate_nodes:
-            # Process candidate nodes in reverse (newest posts at the bottom)
             for node in reversed(candidate_nodes):
                 for br in node.find_all("br"):
                     br.replace_with(" ")
 
                 text = node.get_text(separator=" ", strip=True)
+                if any(ign in text for ign in IGNORED_PATTERNS):
+                    continue
+
                 if len(text) >= config.MIN_POST_LENGTH and text not in seen_texts:
                     seen_texts.add(text)
                     posts.append(text)
                     if len(posts) >= limit:
-                        break
+                        return posts
 
-        # Step 2: Fallback extraction if primary selectors yield insufficient posts
-        if len(posts) < limit:
-            # Fallback to paragraph or div blocks containing substantial Persian text
-            fallback_blocks = soup.find_all(["p", "div", "article"])
-            for block in reversed(fallback_blocks):
-                # Avoid parent nodes that contain already collected nodes
-                for br in block.find_all("br"):
+        # Step 3: Generic fallback to paragraph and block elements
+        if not posts:
+            for p_node in reversed(soup.find_all("p")):
+                for br in p_node.find_all("br"):
                     br.replace_with(" ")
-
-                text = block.get_text(separator=" ", strip=True)
-
-                # Heuristic: must be long enough and not already recorded or substring of recorded
-                if (
-                    len(text) >= config.MIN_POST_LENGTH
-                    and text not in seen_texts
-                    and not any(text in existing for existing in seen_texts)
-                ):
+                text = p_node.get_text(separator=" ", strip=True)
+                if any(ign in text for ign in IGNORED_PATTERNS):
+                    continue
+                if len(text) >= config.MIN_POST_LENGTH and text not in seen_texts:
                     seen_texts.add(text)
                     posts.append(text)
                     if len(posts) >= limit:
-                        break
+                        return posts
 
         return posts
+

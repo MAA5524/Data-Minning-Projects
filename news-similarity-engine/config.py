@@ -77,8 +77,8 @@ class Settings(BaseSettings):
     # Channel presets for quick testing in UI
     POPULAR_CHANNELS: Dict[str, List[str]] = Field(
         default={
-            "Eitaa": ["farsna", "tasnimnews", "akharinkhabar", "iribnews", "mehrnews"],
-            "Bale": ["iribnews", "farsna", "tasnimnews", "akharinkhabar", "mehrnews"],
+            "Eitaa": ["farsna", "tasnimnews", "iribnews", "akharinkhabar", "mehrnews", "isna", "irnanews"],
+            "Bale": ["iribnews", "farsna", "tasnimnews", "akharinkhabar", "mehrnews", "isna", "irnanews"],
         },
         description="Popular Iranian news channel handles for quick selection",
     )
@@ -86,6 +86,24 @@ class Settings(BaseSettings):
 
 # Instantiate singleton settings instance
 settings = Settings()
+
+# Friendly Persian names for popular news agencies
+NEWS_AGENCIES: Dict[str, str] = {
+    "farsna": "خبرگزاری فارس",
+    "tasnimnews": "خبرگزاری تسنیم",
+    "iribnews": "خبرگزاری صدا و سیما",
+    "akharinkhabar": "آخرین خبر",
+    "mehrnews": "خبرگزاری مهر",
+    "isna": "خبرگزاری ایسنا",
+    "irnanews": "خبرگزاری ایرنا",
+}
+
+
+def get_channel_display_name(channel_id: str) -> str:
+    """Return friendly Persian news agency name or formatted handle."""
+    clean = channel_id.strip().lstrip("@")
+    return NEWS_AGENCIES.get(clean, f"کانال @{clean}")
+
 
 # Re-export settings attributes at module level for seamless backwards compatibility
 EMBEDDING_MODEL_NAME: str = settings.EMBEDDING_MODEL_NAME
@@ -114,4 +132,7 @@ __all__ = [
     "DEFAULT_EITAA_CHANNEL",
     "DEFAULT_BALE_CHANNEL",
     "POPULAR_CHANNELS",
+    "NEWS_AGENCIES",
+    "get_channel_display_name",
 ]
+

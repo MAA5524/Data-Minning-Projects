@@ -44,8 +44,20 @@ class EitaaScraper(BaseScraper):
         """
         soup = BeautifulSoup(html_content, "html.parser")
 
-        # Public Eitaa channel posts reside in div.eitaa_message_text
-        message_nodes = soup.select("div.eitaa_message_text")
+        # Eitaa updated their CSS class names — try both old and new selectors
+        # New (current): etme_widget_message_text | Old (legacy): eitaa_message_text
+        SELECTORS = [
+            "div.etme_widget_message_text",   # Current Eitaa web preview
+            "div.js-message_text",             # Alternative current selector
+            "div.eitaa_message_text",          # Legacy fallback
+        ]
+
+        message_nodes = []
+        for selector in SELECTORS:
+            nodes = soup.select(selector)
+            if nodes:
+                message_nodes = nodes
+                break  # Use the first selector that yields results
 
         posts: List[str] = []
         # Reverse to get newest posts first (messages in web preview are ordered chronologically)

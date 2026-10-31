@@ -9,6 +9,10 @@
 
 A production-grade, asynchronous NLP application that extracts public news posts from two major Iranian messaging platforms (**Eitaa** and **Bale**), applies specialized Persian preprocessing, and computes both **Dense Semantic Similarity** (using `BAAI/bge-m3` + FAISS Vector Search) and **Lexical Similarity** (using TF-IDF + Cosine Similarity). The platform features an interactive, RTL-optimized **Streamlit** user interface.
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Persian News Similarity Engine Demo" width="100%">
+</p>
+
 ---
 
 ## 📌 Architecture Overview

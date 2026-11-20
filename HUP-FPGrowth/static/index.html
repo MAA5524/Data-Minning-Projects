@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HUP-FPGrowth • High Utility Pattern Mining</title>
+  <!-- Google Fonts: Inter, Vazirmatn & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title" data-i18n="brandTitle">HUP-FPGrowth</span>
+          <span class="brand-subtitle" data-i18n="brandSubtitle">High Utility Pattern Mining Dashboard</span>
+        </div>
+        <span class="badge badge-algorithm" data-i18n="algoBadge">UP-Tree • TWU Two-Phase</span>
+      </div>
+
+      <div class="nav-actions">
+        <div class="dataset-pill" id="navDatasetPill">
+          <span class="status-dot"></span>
+          <span id="navDatasetName">Loading dataset...</span>
+        </div>
+
+        <!-- Language Switcher Button -->
+        <button id="langToggleBtn" class="btn-lang" title="تغییر زبان / Switch Language" aria-label="Toggle Language">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span id="langBtnText">فارسی</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="btn-icon" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <div class="layout-body">
+      <!-- Left Sidebar: Controls & Configuration -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h3 data-i18n="miningParams">Mining Parameters</h3>
+          <span class="sidebar-caption" data-i18n="configureThresholds">Configure tree pruning thresholds</span>
+        </div>
+
+        <form id="mineForm" onsubmit="return false;">
+          <!-- Dataset Selector -->
+          <div class="form-group">
+            <label for="datasetSelect" data-i18n="targetDataset">Target Dataset</label>
+            <select id="datasetSelect" class="form-control">
+              <option value="ecommerce_utility">E-Commerce Retail (Named Items)</option>
+              <option value="foodmart_utility">Foodmart Grocery Utility</option>
+            </select>
+            <div id="datasetMetaBrief" class="meta-brief">
+              <span id="briefTxCount">- txs</span> • <span id="briefItemsCount">- items</span>
+            </div>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group upload-section">
+            <label data-i18n="uploadCustom">Upload Custom Dataset</label>
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="customFileInput" accept=".csv,.txt" class="file-input-hidden" />
+              <div class="dropzone-content" id="dropzonePrompt">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span data-i18n="dropzonePrompt">Upload <strong>.csv</strong> or SPMF <strong>.txt</strong></span>
+              </div>
+              <div class="dropzone-status" id="uploadStatus" style="display: none;"></div>
+            </div>
+          </div>
+
+          <!-- Threshold Mode Toggle -->
+          <div class="form-group">
+            <label data-i18n="thresholdMode">Threshold Mode</label>
+            <div class="toggle-segmented" id="thresholdModeToggle">
+              <button type="button" class="segment-btn active" data-mode="percentage" data-i18n="modeRelative">
+                Relative (% of Utility)
+              </button>
+              <button type="button" class="segment-btn" data-mode="absolute" data-i18n="modeAbsolute">
+                Absolute Value
+              </button>
+            </div>
+          </div>
+
+          <!-- Min Utility Slider & Numeric Input -->
+          <div class="form-group">
+            <div class="label-with-val">
+              <label for="minUtilityInput"><span data-i18n="minUtility">Minimum Utility</span> (<span id="thresholdUnitLabel">%</span>)</label>
+              <span id="effectiveAbsVal" class="effective-val">≈ 0.00 utility</span>
+            </div>
+            <div class="slider-val-pair">
+              <input type="range" id="minUtilitySlider" class="form-slider" step="0.01" min="0.01" max="5.0" value="0.35" />
+              <input type="number" id="minUtilityInput" class="form-control number-input" step="0.01" min="0.0001" value="0.35" />
+            </div>
+            <div class="threshold-hints">
+              <span data-i18n="presetLabel">Preset:</span>
+              <button type="button" class="preset-btn" data-preset="low" data-i18n="presetLow">Rich (Low)</button>
+              <button type="button" class="preset-btn active" data-preset="default" data-i18n="presetDefault">Optimal</button>
+              <button type="button" class="preset-btn" data-preset="high" data-i18n="presetHigh">Strict</button>
+            </div>
+          </div>
+
+          <!-- Max Pattern Length (k) -->
+          <div class="form-group">
+            <label for="maxLenSelect" data-i18n="maxPatternLength">Max Pattern Length (k)</label>
+            <select id="maxLenSelect" class="form-control">
+              <option value="2" data-i18n="kPairs">2-itemsets (Pairs)</option>
+              <option value="3" data-i18n="kTriples">3-itemsets (Triples)</option>
+              <option value="4" selected data-i18n="kStandard">4-itemsets (Standard)</option>
+              <option value="5" data-i18n="kFive">5-itemsets</option>
+              <option value="0" data-i18n="kUnlimited">Unlimited Length</option>
+            </select>
+          </div>
+
+          <!-- Execute Button -->
+          <button id="runMiningBtn" type="button" class="btn btn-primary btn-block">
+            <span class="btn-text">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span data-i18n="btnRunMining">Run HUP-FPGrowth</span>
+            </span>
+            <span class="btn-spinner" style="display: none;">
+              <span class="spinner-ring"></span>
+              <span data-i18n="miningInProgress">Mining patterns...</span>
+            </span>
+          </button>
+        </form>
+
+        <!-- Algorithm Pipeline Steps Preview -->
+        <div class="pipeline-summary">
+          <h4 data-i18n="executionPipeline">Execution Pipeline</h4>
+          <ul class="pipeline-steps">
+            <li><span class="step-num">1</span> <span data-i18n="pipelineStep1">TWU Pruning (Downward Closure)</span></li>
+            <li><span class="step-num">2</span> <span data-i18n="pipelineStep2">Compressed UP-Tree Construction</span></li>
+            <li><span class="step-num">3</span> <span data-i18n="pipelineStep3">Phase 1: Conditional Tree DFS (PHUIs)</span></li>
+            <li><span class="step-num">4</span> <span data-i18n="pipelineStep4">Phase 2: Inverted-Index Verification (HUIs)</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- KPI Cards Row -->
+        <section class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap bg-blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-title" data-i18n="kpiTotalTx">Total Transactions</span>
+              <span class="kpi-value" id="kpiTransactions">-</span>
+              <span class="kpi-sub" id="kpiTotalUtility">Total Utility: -</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap bg-purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-title" data-i18n="kpiPromising">Promising Items</span>
+              <span class="kpi-value" id="kpiPromisingItems">-</span>
+              <span class="kpi-sub" id="kpiTotalItems" data-i18n="kpiItemsAboveTWU">Items above min TWU</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap bg-emerald">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-title" data-i18n="kpiVerifiedHuis">Verified HUIs (Phase 2)</span>
+              <span class="kpi-value" id="kpiVerifiedHuis">-</span>
+              <span class="kpi-sub" id="kpiCandidatesCount">from - Phase 1 PHUIs</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap bg-amber">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-title" data-i18n="kpiTopPattern">Top Pattern Utility</span>
+              <span class="kpi-value" id="kpiTopUtility">-</span>
+              <span class="kpi-sub" id="kpiTopPatternName" title="Top Pattern" data-i18n="topEarner">Top earner</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap bg-cyan">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-title" data-i18n="kpiExecutionTime">Execution Time</span>
+              <span class="kpi-value" id="kpiExecutionTime">- ms</span>
+              <span class="kpi-sub" id="kpiPruningEff">Pruning: -%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-table">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="3" y1="15" x2="21" y2="15"></line>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+            <span data-i18n="tabPatternsTable">High Utility Patterns Table</span> (<span id="tabCount">0</span>)
+          </button>
+          <button class="tab-btn" data-tab="tab-analytics">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span data-i18n="tabAnalytics">Visual Analytics & Charts</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-gems">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span data-i18n="tabHiddenGems">Hidden Gems</span> (<span id="gemsCount">0</span>)
+          </button>
+          <button class="tab-btn" data-tab="tab-theory">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span data-i18n="tabTheoryGuide">Algorithm & Theory Guide</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Patterns Table -->
+        <div class="tab-pane active" id="tab-table">
+          <div class="table-toolbar">
+            <div class="toolbar-search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="patternSearchInput" placeholder="Filter by item name or ID..." data-i18n-placeholder="searchPlaceholder" />
+            </div>
+
+            <div class="toolbar-filters">
+              <div class="filter-item">
+                <label data-i18n="filterSizeLabel">Size k:</label>
+                <select id="filterLengthSelect" class="form-control form-control-sm">
+                  <option value="all" data-i18n="filterAllSizes">All Sizes</option>
+                  <option value="1">k = 1</option>
+                  <option value="2">k = 2</option>
+                  <option value="3">k = 3</option>
+                  <option value="4">k = 4</option>
+                  <option value="5">k = 5+</option>
+                </select>
+              </div>
+
+              <div class="filter-item">
+                <label data-i18n="sortByLabel">Sort By:</label>
+                <select id="sortBySelect" class="form-control form-control-sm">
+                  <option value="utility-desc" data-i18n="sortUtilDesc">Exact Utility (High → Low)</option>
+                  <option value="utility-asc" data-i18n="sortUtilAsc">Exact Utility (Low → High)</option>
+                  <option value="support-desc" data-i18n="sortSupDesc">Support Count (High → Low)</option>
+                  <option value="avg-desc" data-i18n="sortAvgDesc">Avg Utility / Tx (High → Low)</option>
+                  <option value="length-desc" data-i18n="sortLengthDesc">Length k (High → Low)</option>
+                </select>
+              </div>
+
+              <button id="downloadCsvBtn" class="btn btn-secondary btn-sm" title="Download filtered patterns as CSV">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span data-i18n="btnDownloadCsv">Download CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Patterns Data Table -->
+          <div class="table-container">
+            <table class="data-table" id="patternsTable">
+              <thead>
+                <tr>
+                  <th class="col-index" data-i18n="colIndex">#</th>
+                  <th class="col-k" data-i18n="colK">k</th>
+                  <th data-i18n="colPattern">High Utility Itemset (Pattern)</th>
+                  <th style="width: 140px;" data-i18n="colSupport">Support Count</th>
+                  <th style="width: 130px;" data-i18n="colSupportPct">Support %</th>
+                  <th style="width: 200px;" data-i18n="colUtility">Exact Utility</th>
+                  <th style="width: 140px;" data-i18n="colAvgUtility">Avg Utility / Tx</th>
+                  <th style="width: 110px;" data-i18n="colUtilityShare">Utility Share</th>
+                </tr>
+              </thead>
+              <tbody id="patternsTableBody">
+                <tr>
+                  <td colspan="8" class="empty-state" data-i18n="tableInitialState">
+                    Click "Run HUP-FPGrowth" to mine high utility patterns.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="pagination-bar" id="paginationBar">
+            <div class="page-info">
+              <span data-i18n="showingText">Showing</span> <span id="pageStart">0</span> - <span id="pageEnd">0</span> <span data-i18n="ofText">of</span> <span id="pageTotal">0</span> <span data-i18n="patternsText">patterns</span>
+            </div>
+            <div class="page-controls">
+              <label data-i18n="rowsPerPage">Rows:</label>
+              <select id="pageSizeSelect" class="form-control form-control-sm">
+                <option value="15">15</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <button id="prevPageBtn" class="btn btn-outline btn-sm" disabled><span class="arrow-prev">&larr;</span> <span data-i18n="btnPrev">Prev</span></button>
+              <span id="pageCurrentDisplay" class="page-current">Page 1 of 1</span>
+              <button id="nextPageBtn" class="btn btn-outline btn-sm" disabled><span data-i18n="btnNext">Next</span> <span class="arrow-next">&rarr;</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Visual Analytics -->
+        <div class="tab-pane" id="tab-analytics">
+          <div class="charts-grid">
+            <!-- Top 15 Patterns Bar Chart -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 data-i18n="chartTopPatternsTitle">Top High Utility Patterns</h3>
+                  <span class="chart-subtitle" data-i18n="chartTopPatternsSubtitle">Highest utility itemsets mined by UP-Tree</span>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="topPatternsChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Scatter Plot: Support vs Utility -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 data-i18n="chartScatterTitle">Utility vs. Frequency Scatter Plot</h3>
+                  <span class="chart-subtitle" data-i18n="chartScatterSubtitle">Exact Utility plotted against Support Frequency (%)</span>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="scatterChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Pattern Size Distribution -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 data-i18n="chartKDistTitle">Pattern Size (k) Distribution</h3>
+                  <span class="chart-subtitle" data-i18n="chartKDistSubtitle">Number of itemsets discovered per cardinality</span>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="kDistChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Pruning Funnel -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 data-i18n="chartFunnelTitle">Two-Phase Pruning Funnel</h3>
+                  <span class="chart-subtitle" data-i18n="chartFunnelSubtitle">Step-by-step candidate elimination efficiency</span>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="pruningFunnelChartCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Hidden Gems -->
+        <div class="tab-pane" id="tab-gems">
+          <div class="gems-intro-card">
+            <div class="gems-intro-icon">💎</div>
+            <div class="gems-intro-text">
+              <h3 data-i18n="gemsIntroTitle">Why High Utility Mining Beats Standard Frequency Mining</h3>
+              <p data-i18n="gemsIntroDesc">
+                In standard Frequent Pattern Mining (FP-Growth / Apriori), an itemset is discarded if its support frequency is below <code>min_sup</code>.
+                In enterprise and e-commerce contexts, high-margin luxury items, premium bundles, or high-profit goods are purchased infrequently,
+                yet generate the vast majority of business profit. <strong>These are "Hidden Gems"</strong>: patterns with low transaction frequency but huge utility yields.
+              </p>
+            </div>
+          </div>
+
+          <div class="gems-list" id="gemsListContainer">
+            <div class="empty-state" data-i18n="gemsEmptyState">No patterns mined yet. Run the algorithm to uncover hidden high-utility gems.</div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Algorithm & Theory Guide -->
+        <div class="tab-pane" id="tab-theory">
+          <div class="theory-container">
+            <div class="theory-section">
+              <h2 data-i18n="theoryHeading">Theoretical Foundations of HUIM</h2>
+              <p class="lead-text" data-i18n="theoryLead">
+                High Utility Itemset Mining (HUIM) generalizes Frequent Itemset Mining by considering both <strong>item quantities</strong> in transactions and <strong>unit profits (utility)</strong>, addressing the fundamental limitation that frequent items are not necessarily high-profit items.
+              </p>
+            </div>
+
+            <div class="theory-grid">
+              <div class="theory-card">
+                <div class="math-title" data-i18n="mathItemUtilTitle">1. Item Utility in Transaction</div>
+                <div class="formula-box">
+                  <code>u(i, T) = q(i, T) &times; p(i)</code>
+                </div>
+                <p data-i18n="mathItemUtilDesc">
+                  The utility of item <em>i</em> in transaction <em>T</em> is the product of its purchased quantity <em>q(i, T)</em> and its unit utility (e.g., profit margin) <em>p(i)</em>.
+                </p>
+              </div>
+
+              <div class="theory-card">
+                <div class="math-title" data-i18n="mathTUTitle">2. Transaction Utility (TU)</div>
+                <div class="formula-box">
+                  <code>TU(T) = &sum;_{i &isin; T} u(i, T)</code>
+                </div>
+                <p data-i18n="mathTUDesc">
+                  The total utility of transaction <em>T</em> across all items contained within it.
+                </p>
+              </div>
+
+              <div class="theory-card">
+                <div class="math-title" data-i18n="mathTWUTitle">3. Transaction-Weighted Utility (TWU)</div>
+                <div class="formula-box">
+                  <code>TWU(X) = &sum;_{T &supe; X} TU(T)</code>
+                </div>
+                <p data-i18n="mathTWUDesc">
+                  The sum of transaction utilities for all transactions containing itemset <em>X</em>. Used as an upper bound on true utility.
+                </p>
+              </div>
+
+              <div class="theory-card">
+                <div class="math-title" data-i18n="mathDownwardTitle">4. TWU Downward Closure Property</div>
+                <div class="formula-box">
+                  <code>u(X) &le; TWU(X) &amp; TWU(Y) &le; TWU(X) &forall; Y &supe; X</code>
+                </div>
+                <p data-i18n="mathDownwardDesc">
+                  Unlike exact utility, <strong>TWU is monotonic</strong>. If <em>TWU(X) &lt; min_utility</em>, no superset <em>Y &supe; X</em> can be a high-utility itemset, guaranteeing zero false negatives!
+                </p>
+              </div>
+            </div>
+
+            <div class="theory-workflow">
+              <h3 data-i18n="workflowHeading">Two-Phase Tree-Based Architecture</h3>
+              <div class="workflow-diagram">
+                <div class="flow-step">
+                  <div class="step-badge" data-i18n="flowStep1Badge">Phase 1</div>
+                  <h4 data-i18n="flowStep1Title">Global TWU Pruning</h4>
+                  <p data-i18n="flowStep1Desc">Prune all unpromising items where <code>TWU(i) &lt; min_utility</code>.</p>
+                </div>
+                <div class="flow-arrow flow-arrow-symbol">&rarr;</div>
+                <div class="flow-step">
+                  <div class="step-badge" data-i18n="flowStep2Badge">Phase 1</div>
+                  <h4 data-i18n="flowStep2Title">UP-Tree Construction</h4>
+                  <p data-i18n="flowStep2Desc">Insert transactions ordered by descending TWU with Reorganized Transaction Utility (RTU).</p>
+                </div>
+                <div class="flow-arrow flow-arrow-symbol">&rarr;</div>
+                <div class="flow-step">
+                  <div class="step-badge" data-i18n="flowStep3Badge">Phase 1</div>
+                  <h4 data-i18n="flowStep3Title">Conditional UP-Trees</h4>
+                  <p data-i18n="flowStep3Desc">Traverse HeaderTable bottom-up to generate Potential High Utility Itemsets (PHUIs).</p>
+                </div>
+                <div class="flow-arrow flow-arrow-symbol">&rarr;</div>
+                <div class="flow-step">
+                  <div class="step-badge" data-i18n="flowStep4Badge">Phase 2</div>
+                  <h4 data-i18n="flowStep4Title">Exact Verification</h4>
+                  <p data-i18n="flowStep4Desc">Intersect inverted-index TID sets to compute exact <code>u(X) &ge; min_utility</code>.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="theory-card full-width">
+              <h3 data-i18n="dguDluTitle">DGU &amp; DLU Pruning Strategies</h3>
+              <p data-i18n="dguDesc">
+                <strong>DGU (Discarding Global Unpromising items):</strong> When constructing the global UP-Tree, utilities of items with global <em>TWU &lt; min_utility</em> are eliminated from the transaction utility, dramatically tightening tree node upper bounds.
+              </p>
+              <p data-i18n="dluDesc">
+                <strong>DLU (Discarding Local Unpromising items):</strong> In conditional UP-Trees, items that are unpromising in the conditional pattern base are excluded from path utilities, avoiding tree inflation and accelerating recursive mining.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ID3-Gini Decision Tree Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Left Control Panel -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="2.5"></circle>
+            <circle cx="6" cy="18" r="2.5"></circle>
+            <circle cx="18" cy="18" r="2.5"></circle>
+            <path d="M10.8 7.2 7.2 15.8M13.2 7.2l3.6 8.6"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">ID3-Gini Studio</div>
+          <div class="brand-subtitle">Han, Pei &amp; Tong · Ch. 6</div>
+        </div>
+      </div>
+
+      <section class="panel-group">
+        <div class="group-label">1. Dataset Source</div>
+        <label class="field-label" for="dataset-select">Active Dataset</label>
+        <select id="dataset-select" class="input-control"></select>
+
+        <div id="dataset-meta-pill" class="meta-pill">
+          Loading datasets...
+        </div>
+
+        <label class="upload-box" id="upload-dropzone" for="csv-upload-input">
+          <input type="file" id="csv-upload-input" accept=".csv" hidden />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 16V4m0 0-4 4m4-4 4 4"></path>
+            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path>
+          </svg>
+          <span id="upload-label">Upload Custom CSV</span>
+          <small>Any number of discrete columns</small>
+        </label>
+      </section>
+
+      <section class="panel-group">
+        <div class="group-label">2. Target &amp; Split</div>
+        <label class="field-label" for="target-select">Target Class Column</label>
+        <select id="target-select" class="input-control"></select>
+
+        <div class="slider-header">
+          <label class="field-label" for="test-size-slider">Test Split Ratio</label>
+          <span class="mono-badge" id="test-size-value">20% Test</span>
+        </div>
+        <input type="range" id="test-size-slider" min="10" max="50" step="5" value="20" class="range-input" />
+      </section>
+
+      <section class="panel-group">
+        <div class="group-label">3. Tree Hyperparameters</div>
+
+        <div class="checkbox-row">
+          <label class="checkbox-label" for="unlimited-depth-checkbox">
+            <input type="checkbox" id="unlimited-depth-checkbox" checked />
+            <span>Unlimited Max Depth</span>
+          </label>
+          <span class="mono-badge" id="max-depth-display">∞</span>
+        </div>
+        <input type="range" id="max-depth-slider" min="1" max="20" step="1" value="6" class="range-input" disabled />
+
+        <div class="dual-inputs">
+          <div>
+            <label class="field-label" for="min-samples-input">Min Split</label>
+            <input type="number" id="min-samples-input" class="input-control mono" min="2" max="200" value="2" />
+          </div>
+          <div>
+            <label class="field-label" for="seed-input">Random Seed</label>
+            <input type="number" id="seed-input" class="input-control mono" value="42" />
+          </div>
+        </div>
+      </section>
+
+      <button id="train-btn" class="primary-btn" type="button">
+        <span class="btn-spinner" id="train-spinner" hidden></span>
+        <span id="train-btn-text">Train ID3-Gini Tree</span>
+      </button>
+
+      <div id="status-toast" class="status-toast" role="status" aria-live="polite" hidden></div>
+
+      <footer class="sidebar-footer">
+        <div class="formula-box">
+          <div class="formula-title">Split Criterion</div>
+          <code>Gini(D) = 1 - &Sigma; p<sub>j</sub>&sup2;</code>
+          <code>&Delta;Gini(A) = Gini(D) - Gini<sub>A</sub>(D)</code>
+        </div>
+      </footer>
+    </aside>
+
+    <!-- Main Dashboard Area -->
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h1>ID3-Gini Decision Tree Classifier</h1>
+          <p class="topbar-subtitle" id="active-run-summary">
+            Select a dataset and train the pure-Python multiway ID3-Gini classifier.
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <button id="theme-toggle-btn" class="icon-btn" type="button" title="Toggle Dark/Light Theme">
+            <span id="theme-icon">☀️</span>
+            <span id="theme-label">Light Mode</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- KPI Cards Row -->
+      <section class="kpi-grid" aria-label="Model Key Performance Indicators">
+        <article class="kpi-card accent-emerald">
+          <div class="kpi-label">Test Accuracy</div>
+          <div class="kpi-value" id="kpi-test-acc">—</div>
+          <div class="kpi-sub" id="kpi-macro-f1">Macro F1: —</div>
+        </article>
+        <article class="kpi-card accent-indigo">
+          <div class="kpi-label">Train Accuracy</div>
+          <div class="kpi-value" id="kpi-train-acc">—</div>
+          <div class="kpi-sub" id="kpi-split-counts">Split: —</div>
+        </article>
+        <article class="kpi-card accent-sky">
+          <div class="kpi-label">Tree Depth</div>
+          <div class="kpi-value" id="kpi-depth">—</div>
+          <div class="kpi-sub" id="kpi-depth-limit">Max Depth: Unlimited</div>
+        </article>
+        <article class="kpi-card accent-amber">
+          <div class="kpi-label">Total / Leaf Nodes</div>
+          <div class="kpi-value" id="kpi-nodes">—</div>
+          <div class="kpi-sub" id="kpi-internal-nodes">Internal: —</div>
+        </article>
+        <article class="kpi-card accent-purple">
+          <div class="kpi-label">Training Time</div>
+          <div class="kpi-value" id="kpi-time">—</div>
+          <div class="kpi-sub" id="kpi-rules-count">Rules: —</div>
+        </article>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <nav class="tabs-bar" role="tablist">
+        <button class="tab-btn active" data-tab="tree-tab" role="tab" aria-selected="true">
+          Interactive Decision Tree
+        </button>
+        <button class="tab-btn" data-tab="predict-tab" role="tab" aria-selected="false">
+          Live Sample Predictor
+        </button>
+        <button class="tab-btn" data-tab="eval-tab" role="tab" aria-selected="false">
+          Evaluation &amp; Confusion Matrix
+        </button>
+        <button class="tab-btn" data-tab="rules-tab" role="tab" aria-selected="false">
+          Extracted IF-THEN Rules
+        </button>
+      </nav>
+
+      <!-- Tab 1: Interactive Decision Tree -->
+      <section id="tree-tab" class="tab-panel active">
+        <div class="card tree-card">
+          <div class="tree-toolbar">
+            <div class="toolbar-group">
+              <button class="tool-btn" id="zoom-in-btn" type="button">+ Zoom In</button>
+              <button class="tool-btn" id="zoom-out-btn" type="button">- Zoom Out</button>
+              <button class="tool-btn" id="zoom-reset-btn" type="button">Reset View</button>
+              <button class="tool-btn" id="expand-all-btn" type="button">Expand All</button>
+              <button class="tool-btn" id="collapse-depth2-btn" type="button">Collapse &gt; Depth 2</button>
+            </div>
+            <div class="tree-legend">
+              <span class="legend-item"><i class="dot dot-internal"></i>Decision Node (click to toggle)</span>
+              <span class="legend-item"><i class="dot dot-leaf"></i>Leaf Class</span>
+              <span class="legend-item"><i class="dot dot-path"></i>Predicted Path</span>
+            </div>
+          </div>
+
+          <div class="tree-viewport" id="tree-viewport">
+            <svg id="tree-svg"></svg>
+            <div class="node-inspector" id="node-inspector" hidden>
+              <div class="inspector-header">
+                <span id="inspector-title">Node Details</span>
+                <button type="button" id="inspector-close" class="inspector-close">&times;</button>
+              </div>
+              <div id="inspector-body" class="inspector-body"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 2: Live Sample Predictor -->
+      <section id="predict-tab" class="tab-panel">
+        <div class="predictor-layout">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Feature Input Form</h2>
+                <p class="card-subtitle">Dynamically generated for all discrete features of the active dataset.</p>
+              </div>
+              <div class="toolbar-group">
+                <button class="tool-btn" id="load-sample-btn" type="button">Load Random Test Sample</button>
+                <button class="tool-btn" id="reset-form-btn" type="button">Reset</button>
+              </div>
+            </div>
+            <form id="predict-form" class="predict-form-grid"></form>
+            <div class="predict-actions">
+              <button type="button" id="predict-submit-btn" class="primary-btn inline-btn">
+                Predict Class &amp; Trace Path
+              </button>
+              <span id="sample-true-label" class="mono-badge" hidden></span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Prediction &amp; Decision Path</h2>
+                <p class="card-subtitle">Exact root-to-leaf traversal with node Gini impurity scores.</p>
+              </div>
+              <button class="tool-btn" id="jump-to-tree-btn" type="button" hidden>Highlight on Tree &rarr;</button>
+            </div>
+            <div id="prediction-result-box" class="prediction-result-empty">
+              Train a model and click <strong>Predict Class &amp; Trace Path</strong> to inspect the decision trace.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: Evaluation & Confusion Matrix -->
+      <section id="eval-tab" class="tab-panel">
+        <div class="eval-layout">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Confusion Matrix (Test Set)</h2>
+                <p class="card-subtitle">Rows represent ground-truth labels; columns represent predicted labels.</p>
+              </div>
+            </div>
+            <div id="confusion-matrix-container" class="table-scroll"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Per-Class &amp; Macro Metrics</h2>
+                <p class="card-subtitle">Pure-Python Precision, Recall, F1-Score, and Support.</p>
+              </div>
+            </div>
+            <div id="metrics-table-container" class="table-scroll"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: Extracted IF-THEN Rules -->
+      <section id="rules-tab" class="tab-panel">
+        <div class="card">
+          <div class="card-header rules-header">
+            <div>
+              <h2>Extracted IF-THEN Decision Rules</h2>
+              <p class="card-subtitle">Human-readable symbolic rules along every non-empty root-to-leaf path.</p>
+            </div>
+            <div class="rules-controls">
+              <input type="search" id="rules-search-input" class="input-control" placeholder="Search attribute, value, or class..." />
+              <select id="rules-class-filter" class="input-control">
+                <option value="ALL">All Classes</option>
+              </select>
+              <button class="tool-btn" id="download-rules-txt" type="button">Download TXT</button>
+              <button class="tool-btn" id="download-rules-csv" type="button">Download CSV</button>
+            </div>
+          </div>
+          <div id="rules-count-bar" class="rules-count-bar"></div>
+          <div id="rules-list" class="rules-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
